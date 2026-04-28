@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe 4x4 - Minimax AI</title>
+    <style>
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #0f3460;
+            --highlight: #e94560;
+            --success: #00d4ff;
+            --warning: #ffa500;
+            --danger: #ff4757;
+            --neutral: #ecf0f1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: var(--neutral);
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(14, 165, 233, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(239, 68, 96, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            background: linear-gradient(135deg, var(--success) 0%, var(--highlight) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: rgba(236, 240, 241, 0.7);
+            letter-spacing: 1px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .game-section {
+            background: rgba(22, 33, 62, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            animation: slideUp 0.8s ease-out 0.1s both;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stats-section {
+            animation: slideUp 0.8s ease-out 0.2s both;
+        }
+
+        .game-title {
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            color: var(--success);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .board-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(15, 52, 96, 0.4) 0%, rgba(20, 60, 100, 0.4) 100%);
+            border-radius: 15px;
+            border: 2px solid rgba(14, 165, 233, 0.3);
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3), 0 8px 32px rgba(15, 165, 233, 0.1);
+        }
+
+        .cell {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, rgba(30, 60, 114, 0.6) 0%, rgba(25, 50, 100, 0.6) 100%);
+            border: 2px solid rgba(14, 165, 233, 0.4);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            color: var(--neutral);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cell::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, rgba(14, 165, 233, 0.3) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+        }
+
+        .cell:hover::before {
+            width: 100px;
+            height: 100px;
+        }
+
+        .cell:hover {
+            border-color: var(--success);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(14, 165, 233, 0.3);
+        }
+
+        .cell.human {
+            color: var(--highlight);
+            font-weight: 900;
+        }
+
+        .cell.ai {
+            color: var(--success);
+            font-weight: 900;
+        }
+
+        .cell:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            transition: left 0.3s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--success) 0%, #00b8d4 100%);
+            color: var(--primary);
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.6);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
+            color: var(--neutral);
+            border: 2px solid var(--success);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            background: linear-gradient(135deg, var(--success) 0%, #00b8d4 100%);
+            color: var(--primary);
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.5);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, var(--highlight) 0%, #e63d7a 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+        }
+
+        .btn-reset:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.6);
+        }
+
+        .stats {
+            background: rgba(14, 52, 96, 0.3);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(14, 165, 233, 0.2);
+            animation: slideIn 0.6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: rgba(236, 240, 241, 0.8);
+        }
+
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--success);
+            font-family: 'Courier New', monospace;
+        }
+
+        .algorithm-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid rgba(14, 165, 233, 0.4);
+            border-radius: 8px;
+            background: rgba(15, 52, 96, 0.3);
+            color: var(--neutral);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(135deg, var(--success) 0%, #00b8d4 100%);
+            color: var(--primary);
+            border-color: var(--success);
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+        }
+
+        .toggle-btn:hover {
+            border-color: var(--success);
+        }
+
+        .game-status {
+            background: rgba(14, 165, 233, 0.15);
+            border: 2px solid rgba(14, 165, 233, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--success);
+            animation: slideIn 0.6s ease-out;
+        }
+
+        .game-status.winner {
+            background: rgba(76, 175, 80, 0.15);
+            border-color: rgba(76, 175, 80, 0.5);
+            color: #4caf50;
+        }
+
+        .game-status.draw {
+            background: rgba(255, 152, 0, 0.15);
+            border-color: rgba(255, 152, 0, 0.5);
+            color: #ff9800;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            margin-left: 10px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.2);
+            }
+        }
+
+        .info-panel {
+            background: rgba(14, 52, 96, 0.3);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+
+        .info-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--success);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-text {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: rgba(236, 240, 241, 0.8);
+            margin-bottom: 12px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(14, 165, 233, 0.2);
+        }
+
+        .comparison-table th {
+            background: rgba(14, 165, 233, 0.2);
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(14, 165, 233, 0.1);
+        }
+
+        .comparison-table td {
+            color: rgba(236, 240, 241, 0.8);
+        }
+
+        .metric-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--success) 0%, #00b8d4 100%);
+            color: var(--primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.5rem;
+            }
+
+            .cell {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+
+            .main-grid {
+                gap: 25px;
+            }
+
+            .game-section, .stats-section {
+                padding: 25px;
+            }
+
+            .btn {
+                min-width: 100px;
+                padding: 12px 16px;
+                font-size: 0.9rem;
+            }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(14, 165, 233, 0.9);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            z-index: 1000;
+            animation: slideInRight 0.4s ease-out;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success {
+            background: rgba(76, 175, 80, 0.9);
+        }
+
+        .toast.error {
+            background: rgba(244, 67, 54, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ TIC TAC TOE 4x4</h1>
+            <p>INTELIGENCIA ARTIFICIAL vs HUMANO</p>
+        </div>
+
+        <div class="main-grid">
+            <!-- Sección de Juego -->
+            <div class="game-section">
+                <h2 class="game-title">🎮 Tablero de Juego</h2>
+
+                <div class="algorithm-toggle">
+                    <button class="toggle-btn active" onclick="setAlgorithm('alphabeta')">
+                        🚀 Alpha-Beta
+                    </button>
+                    <button class="toggle-btn" onclick="setAlgorithm('minimax')">
+                        🔄 Minimax
+                    </button>
+                </div>
+
+                <div class="game-status" id="gameStatus">
+                    Eres X • Comienza el juego
+                </div>
+
+                <div class="board-container">
+                    <div class="board" id="board"></div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" onclick="resetGame()">
+                        🔄 Nuevo Juego
+                    </button>
+                    <button class="btn btn-secondary" onclick="showAnalysis()">
+                        📊 Analizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sección de Estadísticas -->
+            <div class="stats-section">
+                <h2 class="game-title">📊 Estadísticas</h2>
+
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Algoritmo Actual:</span>
+                        <span class="stat-value" id="currentAlgorithm">Alpha-Beta</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Nodos Explorados:</span>
+                        <span class="stat-value" id="nodesCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Último Movimiento IA:</span>
+                        <span class="stat-value" id="lastMove">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Turno:</span>
+                        <span class="stat-value" id="turnIndicator">Humano (X)</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Eficiencia:</span>
+                        <span class="stat-value" id="efficiency">-</span>
+                    </div>
+                </div>
+
+                <div class="info-panel">
+                    <div class="info-title">ℹ️ Acerca de los Algoritmos</div>
+                    <div class="info-text">
+                        <strong>Minimax:</strong> Explora todos los nodos del árbol de búsqueda para encontrar el mejor movimiento evaluando todas las posibilidades futuras.
+                    </div>
+                    <div class="info-text">
+                        <strong>Alpha-Beta:</strong> Optimización del Minimax que poda ramas innecesarias, reduciendo significativamente los nodos explorados.
+                    </div>
+                    <div class="info-text">
+                        <strong>Función Heurística:</strong> Evalúa el tablero considerando líneas abiertas, bloqueos estratégicos y control del centro.
+                    </div>
+                </div>
+
+                <div class="info-panel" style="margin-top: 20px;">
+                    <div class="info-title">🎯 Función Heurística</div>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Factor</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>3 fichas alineadas + espacio</td>
+                                <td><span class="metric-badge">+500</span></td>
+                            </tr>
+                            <tr>
+                                <td>Línea ganadora (4 fichas)</td>
+                                <td><span class="metric-badge">+1000</span></td>
+                            </tr>
+                            <tr>
+                                <td>2 fichas + 2 espacios</td>
+                                <td><span class="metric-badge">+50</span></td>
+                            </tr>
+                            <tr>
+                                <td>Control del centro</td>
+                                <td><span class="metric-badge">+30/ficha</span></td>
+                            </tr>
+                            <tr>
+                                <td>Bloquear ganador rival</td>
+                                <td><span class="metric-badge">+400</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let gameState = {
+            board: Array(4).fill(null).map(() => Array(4).fill(0)),
+            gameOver: false,
+            winner: null,
+            currentAlgorithm: 'alphabeta',
+            isHumanTurn: true,
+            isThinking: false,
+            minimaxNodes: 0,
+            alphabetaNodes: 0
+        };
+
+        const API_BASE = 'http://localhost:5000/api';
+
+        function createBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+
+            for (let row = 0; row < 4; row++) {
+                for (let col = 0; col < 4; col++) {
+                    const cell = document.createElement('button');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+
+                    const value = gameState.board[row][col];
+                    if (value === 1) {
+                        cell.textContent = '✕';
+                        cell.classList.add('human');
+                        cell.disabled = true;
+                    } else if (value === -1) {
+                        cell.textContent = '◯';
+                        cell.classList.add('ai');
+                        cell.disabled = true;
+                    }
+
+                    cell.addEventListener('click', () => handleCellClick(row, col, cell));
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        async function handleCellClick(row, col, cellElement) {
+            if (gameState.gameOver || !gameState.isHumanTurn || gameState.isThinking) {
+                return;
+            }
+
+            gameState.isThinking = true;
+            updateStatus('Pensando...');
+
+            try {
+                const response = await fetch(`${API_BASE}/game/move`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        row,
+                        col,
+                        use_alphabeta: gameState.currentAlgorithm === 'alphabeta'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    gameState.board = data.board;
+                    gameState.nodesExplored = data.nodes_explored;
+                    gameState.currentAlgorithm === 'alphabeta' ?
+                        (gameState.alphabetaNodes = data.nodes_explored) :
+                        (gameState.minimaxNodes = data.nodes_explored);
+
+                    createBoard();
+                    updateStats(data);
+
+                    if (data.ai_move) {
+                        document.getElementById('lastMove').textContent = `(${data.ai_move.row}, ${data.ai_move.col})`;
+                    }
+
+                    if (data.game_over) {
+                        gameState.gameOver = true;
+                        handleGameEnd(data.winner);
+                    } else {
+                        gameState.isHumanTurn = true;
+                        updateStatus('Tu turno (Eres X)');
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error en la conexión', 'error');
+            } finally {
+                gameState.isThinking = false;
+            }
+        }
+
+        function handleGameEnd(winner) {
+            const statusElement = document.getElementById('gameStatus');
+
+            if (winner === 1) {
+                statusElement.textContent = '🎉 ¡Ganaste! Eres muy inteligente';
+                statusElement.classList.add('winner');
+            } else if (winner === -1) {
+                statusElement.textContent = '🤖 La IA Ganó. Mejor suerte la próxima vez';
+                statusElement.classList.add('winner');
+            } else {
+                statusElement.textContent = '🤝 Empate. Excelente partida';
+                statusElement.classList.add('draw');
+            }
+        }
+
+        function updateStatus(message) {
+            document.getElementById('gameStatus').textContent = message;
+        }
+
+        function updateStats(data) {
+            if (data.nodes_explored !== undefined) {
+                document.getElementById('nodesCount').textContent = data.nodes_explored.toLocaleString();
+            }
+
+            const efficiency = calculateEfficiency();
+            if (efficiency !== '-') {
+                document.getElementById('efficiency').textContent = efficiency;
+            }
+        }
+
+        function calculateEfficiency() {
+            if (gameState.minimaxNodes === 0 || gameState.alphabetaNodes === 0) return '-';
+            const reduction = (1 - gameState.alphabetaNodes / gameState.minimaxNodes) * 100;
+            return `${reduction.toFixed(1)}%`;
+        }
+
+        function setAlgorithm(algorithm) {
+            gameState.currentAlgorithm = algorithm;
+            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('currentAlgorithm').textContent = algorithm === 'alphabeta' ? 'Alpha-Beta' : 'Minimax';
+            showToast(`Algoritmo cambiado a ${algorithm === 'alphabeta' ? 'Alpha-Beta' : 'Minimax'}`, 'success');
+        }
+
+        async function resetGame() {
+            try {
+                const response = await fetch(`${API_BASE}/game/reset`, { method: 'POST' });
+                const data = await response.json();
+
+                gameState.board = data.board;
+                gameState.gameOver = false;
+                gameState.winner = null;
+                gameState.isHumanTurn = true;
+                gameState.isThinking = false;
+                gameState.minimaxNodes = 0;
+                gameState.alphabetaNodes = 0;
+
+                createBoard();
+                document.getElementById('gameStatus').classList.remove('winner', 'draw');
+                updateStatus('Nuevo juego iniciado. Tu turno');
+                document.getElementById('nodesCount').textContent = '0';
+                document.getElementById('lastMove').textContent = '-';
+                document.getElementById('efficiency').textContent = '-';
+
+                showToast('Juego reiniciado', 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error al reiniciar el juego', 'error');
+            }
+        }
+
+        async function showAnalysis() {
+            alert('Análisis detallado: Próxima funcionalidad. Continúa jugando para ver las estadísticas en tiempo real.');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // Inicializar
+        createBoard();
+        updateStatus('Eres X • Comienza el juego');
+    </script>
+</body>
+</html>

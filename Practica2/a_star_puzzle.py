@@ -3,6 +3,7 @@ import time
 import tracemalloc
 
 class Puzzle:
+    # Estado inicial arreglo, objetivo []. casillas, función lambda
     def __init__(self, estado, objetivo, n, heuristica):
         self.estado = estado
         self.objetivo = objetivo
@@ -14,16 +15,16 @@ class Puzzle:
         vecinos = []
         i = estado.index(0)
         fila, col = divmod(i, self.n)
-
+        # (fila, columna)
         movimientos = [(-1,0),(1,0),(0,-1),(0,1)]
 
         for df, dc in movimientos:
             nf, nc = fila + df, col + dc
             if 0 <= nf < self.n and 0 <= nc < self.n:
-                nuevo = list(estado)
-                ni = nf * self.n + nc
+                nuevo = list(estado) # Convierte la tupla estado en una lista.
+                ni = nf * self.n + nc # Convierte una posición fila columna a un índice de lista
                 nuevo[i], nuevo[ni] = nuevo[ni], nuevo[i]
-                vecinos.append(tuple(nuevo))
+                vecinos.append(tuple(nuevo)) # Convierte la lista "nuevo" en una tupla y la agrega
 
         return vecinos
 
@@ -177,8 +178,6 @@ def ejecutar_puzzle(inicial, objetivo, n, nombre, heuristica_func):
     print(f"Nodos explorados: {puzzle.nodos_explorados}")
     print(f"Tiempo: {fin_tiempo - inicio_tiempo:.6f} segundos")
     print(f"Memoria pico: {memoria_pico / 1024:.2f} KB")
-
-
 # ---------------- MAIN ----------------
 
 if __name__ == "__main__":
